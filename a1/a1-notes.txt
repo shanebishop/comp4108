@@ -1,0 +1,66 @@
+Output after cracking easy_dump:
+easyuser1:jesse:1011:1011::/home/easyuser1:/bin/sh
+easyuser2:daedalus:1012:1012::/home/easyuser2:/bin/sh
+easyuser3:omega:1013:1013::/home/easyuser3:/bin/sh
+easyuser4:allstate:1014:1014::/home/easyuser4:/bin/sh
+easyuser5:joyce:1015:1015::/home/easyuser5:/bin/sh
+
+Output so far for medium_dump:
+mediumuser1
+mediumuser2:juliejulie:1012:1012::/home/mediumuser2:/bin/sh
+mediumuser3
+mediumuser4:jadey1:1014:1014::/home/mediumuser4:/bin/sh
+mediumuser5:jai123:1015:1015::/home/mediumuser5:/bin/sh
+
+Output so for for hard_dump:
+harduser1:triggers:1011:1011::/home/harduser1:/bin/sh
+harduser2
+harduser3
+harduser4
+harduser5:nabisco0:1015:1015::/home/harduser5:/bin/sh
+
+I got 3/5 users when I used the following command:
+~/JohnTheRipper-unstable-jumbo/run/john --wordlist=../top-10000-passwords.txt --rules medium_dump
+
+From the doc/OPTIONS file for john:
+--stdout[=LENGTH]         just output candidate passwords
+
+When used with a cracking mode, except for "single crack", makes John
+output the candidate passwords it generates to stdout instead of
+actually trying them against password hashes; no password files may be
+specified when this option is used.  If a LENGTH is given, John
+assumes that to be the significant password length and only produces
+passwords up to that length.
+
+Note that with this option, no password files can be specified. However,
+password mangling and wordlist options should still work.
+This option must be used with a cracking mode.
+
+This works for sending passwords to stdout:
+john --wordlist=password.lst --rules --stdout
+
+This command works for the practice nohash file:
+cat /A1/practice_file.aes256.nohash.txt | base64 --decode | openssl enc -aes256 -md md5 -d -k lolsecret
+
+This command works for practice MD5 file:
+cat /A1/practice_file.aes256.MD5.txt | base64 --decode | openssl enc -aes256 -md md5 -d -k "$(echo -n lolsecret | md5sum | awk '{print $1}')"
+
+Now trying to crack medium dump with this command:
+~/JohnTheRipper-unstable-jumbo/run/john --wordlist=over-million.lst --rules part_a/medium_dump &> part_a/medium_dump_john_out.out
+~/JohnTheRipper-unstable-jumbo/run/john --wordlist=over-million.lst --rules part_a/hard_dump &> part_a/medium_dump_john_out.out
+
+ssh command for port forwarding that works (run in git-bash):
+ssh -L 5000:127.0.0.1:5000 student@134.117.131.136
+
+I should augment my million common passwords with a dictionary
+
+To try to find a username, I can use python webcrawling
+I can go through the first 100k usernames until the html is not
+the "username does not exist" one
+I don't even need to enter a password to check the username
+
+Take the src\comp4108\a1\find_active_username.py file and put it on
+a Linux OS, and install chromedriver to the PATH so I can run
+against the stuff
+I will alsso want to transfer this file as well
+To do this, just put everything in one git repo
