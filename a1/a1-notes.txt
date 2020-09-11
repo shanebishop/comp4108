@@ -62,5 +62,115 @@ I don't even need to enter a password to check the username
 Take the src\comp4108\a1\find_active_username.py file and put it on
 a Linux OS, and install chromedriver to the PATH so I can run
 against the stuff
-I will alsso want to transfer this file as well
+I will also want to transfer this file as well
 To do this, just put everything in one git repo
+
+Part B cracked output:
+Modi porro non magnam neque quiquia.
+
+Next grab full 10 million passwords and a bigger English dictionary
+and point it at hard passwords again
+Also read rest of chapter 3 to see if I can come up with a better approach
+to cracking the hard and medium passwords
+
+The following usernames might work:
+michael
+adam
+ian
+jacqui
+jhon
+majid
+smith
+ashlie
+ilya
+leland
+gaz
+gogo
+mariann
+linzi
+ambika
+fer
+astha
+myo
+jaymar
+bharathi
+sadhana
+pansy
+vidal
+jolina
+bich
+akinyemi
+kenichi
+ramakant
+carnell
+tamira
+ylva
+sanjukta
+sidhu
+janah
+gwynn
+cortnie
+suhan
+mylinh
+noureddine
+tamila
+lilianne
+turgut
+res
+sawitree
+izy
+sabeer
+brae
+emam
+fairoz
+joshlyn
+log
+pyan
+noby
+irani
+struan
+lalani
+osos
+wyne
+wed
+fiki
+eisen
+grigori
+chawki
+parama
+jesselle
+kelie
+jalyssa
+rosabella
+shabazz
+satti
+airyn
+iyesha
+altina
+visu
+ashitha
+basi
+lashara
+jimel
+sandon
+kittichai
+coro
+grazel
+jericson
+iuli
+zare
+bff
+rexter
+wiyada
+newaz
+samuelle
+nieke
+mylon
+widdy
+err
+phelim
+aham
+lotan
+jaso
+nurfarahin
+steliana
