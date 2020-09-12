@@ -67,13 +67,16 @@ To do this, just put everything in one git repo
 
 Part B cracked output:
 Modi porro non magnam neque quiquia.
+The password that cracked part B: jeep95
+I can prove this with the following command:
+cat ~/part_b/secret_file.aes256.txt | base64 --decode | openssl enc -aes256 -md md5 -d -k "$(echo -n jeep95 | md5sum | awk '{print $1}')" && echo
 
 Next grab full 10 million passwords and a bigger English dictionary
 and point it at hard passwords again
 Also read rest of chapter 3 to see if I can come up with a better approach
 to cracking the hard and medium passwords
 
-The following usernames might work:
+The following username works:
 michael
 adam
 ian
@@ -174,3 +177,16 @@ lotan
 jaso
 nurfarahin
 steliana
+
+michael is confirmed to be a registered user
+The message for an invalid user is "Invalid password."
+
+michael has the password: 123456789
+Command I ran to find this:
+/home/student/JohnTheRipper-unstable-jumbo/run/john --wordlist=/home/student/over-million.lst --rules --stdout | python find_password.py
+
+Currently 24/28 points for A1
+
+/home/student/JohnTheRipper-unstable-jumbo/run/john --config=/home/student/JohnTheRipper-unstable-jumbo/run/john.conf --incremental=all --max-length=6 --progress-every=60 hard_dump
+
+Maybe try to brute force everything up to 8 characters of only alphanumeric on medium

@@ -22,7 +22,6 @@
 # what alert text would indicate the user was valid.
 
 import requests
-import json
 from bs4 import BeautifulSoup
 
 with open('facebook-firstnames-first-100k.txt') as f:
