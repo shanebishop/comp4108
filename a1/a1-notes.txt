@@ -16,7 +16,7 @@ Output so for for hard_dump:
 harduser1:triggers:1011:1011::/home/harduser1:/bin/sh
 harduser2
 harduser3:5300block
-harduser4
+harduser4:1kimjane
 harduser5:nabisco0:1015:1015::/home/harduser5:/bin/sh
 
 I got 3/5 users when I used the following command:
@@ -185,7 +185,7 @@ michael has the password: 123456789
 Command I ran to find this:
 /home/student/JohnTheRipper-unstable-jumbo/run/john --wordlist=/home/student/over-million.lst --rules --stdout | python find_password.py
 
-Currently 24/28 points for A1
+Currently 27/28 points for A1 -> 96%
 
 /home/student/JohnTheRipper-unstable-jumbo/run/john --config=/home/student/JohnTheRipper-unstable-jumbo/run/john.conf --incremental=Alpha --max-length=6 --progress-every=60 hard_dump
 
@@ -195,11 +195,16 @@ After this alpha one with 8 chars, then do alphanum with 7 (or 8)
 
 Maybe try to brute force everything up to 8 characters of only alphanumeric on medium
 
-I have something running on the Azure VM that is scheduled to be done sometime on 15th
-The run on the openstack is supposed to be done 13th
+I have something running on the Azure VM that is scheduled to be done sometime on 14th
+The run on the openstack is supposed to be done 16th - running only alpha with 6 chars
 So check them later
 
 Another thing I should try is the rockyou password dictionary, and add it to my over million file
+
+I caved on installing hashcat as recommended on https://www.alexanderjsingleton.com/infosexy-how-to-use-hashcat-to-crack-passwords-in-ubuntu-18-04/
+So instead I installed in the non-ideal way with sudo apt-get install hashcat
+
+The rockyou dictionary can be downloaded from https://wiki.skullsecurity.org/Passwords, along with the john the ripper dictionary
 
 hashcat takes the hash mode as argument to -m
 -m 0 is MD5
@@ -207,8 +212,44 @@ From https://github.com/frizb/Hashcat-Cheatsheet, I want -m 500 since it uses $1
 
 sudo hashcat --force --status -O -m 500 -a 0 -o /home/shane/a1/hard_cracked.txt hard_dump_just_hashes.txt /home/shane/dicts/rockyou.txt
 
+hashcat has different workload profiles, 1 to 4. 2 is the default, and 3 is higher than I think I want
+(table below shows the computer becomes unresponsive)
+The workload profile is set with -w
+- [ Workload Profiles ] -
+
+  # | Performance | Runtime | Power Consumption | Desktop Impact
+ ===+=============+=========+===================+=================
+  1 | Low         |   2 ms  | Low               | Minimal
+  2 | Default     |  12 ms  | Economic          | Noticeable
+  3 | High        |  96 ms  | High              | Unresponsive
+  4 | Nightmare   | 480 ms  | Insane            | Headless
+
 No running with hob064 rules (https://raw.githubusercontent.com/praetorian-inc/Hob0Rules/master/hob064.rule):
 sudo hashcat --force --status-timer=600 -O -m 500 -a 0 -o /home/shane/a1/hard_cracked.txt -r hob064.rule hard_dump_just_hashes.txt /home/shane/dicts/rockyou.txt
 
 tail a1/hard_dump.log for john progress
 tail a1/hashcat.log for hashcat progress
+
+hashcat screen running on 6574 PID
+To go back to it: screen -dr 6574
+
+The john run I cancelled on the azure VM (with maxlen = 6):
+/home/shane/john/run/john --config=/home/shane/john/run/john.conf --incremental=Alpha --progress-every=60 hard_dump &> hard_dump.log
+
+Running on openstack:
+/home/student/JohnTheRipper-unstable-jumbo/run/john --config=/home/student/JohnTheRipper-unstable-jumbo/run/john.conf --incremental=Alnum --progress-every=120 hard_dump &> hard_dump.log
+If this finishes without success, then try all alnum with min 9 chars max 9 chars
+
+Turning john off on azure changed ETA from 14 hr to 3 hr
+
+sudo /home/student/hashcat/hashcat --force --status-timer=600 -O -m 500 -a 0 -r hob064.rule -o /home/student/part_a/hard_cracked.txt hard_hashes.txt /home/student/over-million.lst
+
+Things I can try:
+-john incremental alphanum
+-hashcat with a bigger ruleset
+-hashcat incremental (may be faster than john)
+
+4% is not worth using the azure vm, so deallocate it, after backing it up
+
+If things remain too slow, maybe switch to hashcat or john with only lower case and numbers,
+  so without uppercase
