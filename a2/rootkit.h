@@ -33,7 +33,7 @@ typedef struct
 } t_syscall_hook;
 
 //The t_syscall_hook_list structure is used for the kernel linked list of hooked
-//syscalls. It primarily serves as a vehicle for a list_head and a pointer to a 
+//syscalls. It primarily serves as a vehicle for a list_head and a pointer to a
 //t_syscall_hook
 typedef struct
 {
@@ -41,7 +41,7 @@ typedef struct
   struct list_head list;
 } t_syscall_hook_list;
 
-// legacy linux_dirent (new dirent64 has d_type before d_name 
+// legacy linux_dirent (new dirent64 has d_type before d_name
 typedef struct {
         unsigned long   d_ino;
         unsigned long   d_off;

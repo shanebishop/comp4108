@@ -4,4 +4,5 @@
 # Must be run as root.
 #
 
+sync
 rmmod rootkit
