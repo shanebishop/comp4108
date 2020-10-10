@@ -67,7 +67,10 @@ asmlinkage int new_open(const char *pathname, int flags, mode_t mode);
 //TODO: NEEDED FOR PARTS B AND C
 //	You will want to add function prototypes for new_execve and new_getdents
 //********
-
+asmlinkage int new_execve(const char *filename, char *const argv[],
+                          char *const envp[]);
+asmlinkage int new_getdents(unsigned int fd, linux_dirent *dirp,
+                            unsigned int count);
 
 /*
  * Module infos
