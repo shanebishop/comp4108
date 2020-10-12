@@ -324,20 +324,22 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
 {
   int (*orig_func)(unsigned int fd, struct linux_dirent *dirp, unsigned int count);
   t_syscall_hook *getdents_hook;
-  int ret_val = 0, bpos = 0;
-  struct linux_dirent *curr = NULL;
+  int nread = 0;
+  unsigned int bpos = 0;
+  struct linux_dirent *d = NULL;
+  char *buf = (char *) dirp;
 
   printk(KERN_ALERT "getdents() hook invoked.\n");
 
   getdents_hook = find_syscall_hook(__NR_getdents);
   orig_func = (void*) getdents_hook->orig_func;
 
-  ret_val = orig_func(fd, dirp, count);
+  nread = orig_func(fd, dirp, count);
 
-  printk(KERN_ALERT "ret_val is %d.\n", ret_val);
+  printk(KERN_ALERT "ret_val is %d.\n", nread);
 
-  if (dirp == NULL || ret_val < 1) {
-    return ret_val;
+  if (dirp == NULL || nread < 1) {
+    return nread;
   }
 
   // TODO Need to be sure to add a print statement between every line
@@ -347,15 +349,16 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
 //  printk(KERN_INFO "entry: %s\n", curr->d_name);
 
 // TODO
-  for (bpos = 0; bpos < ret_val; ) {
+  for (bpos = 0; bpos < (unsigned int)nread;) {
     printk(KERN_ALERT "bpos is %d at start of iteration\n", bpos);
-    curr = (struct linux_dirent*) (dirp + bpos);
-    printk(KERN_ALERT "entry: %s\n", curr->d_name);
-    bpos += curr->d_reclen;
+    //d = (struct linux_dirent *) (dirp + bpos);
+    d = (struct linux_dirent *) (buf + bpos);
+    printk(KERN_ALERT "%s\n", d->d_name);
+    bpos += d->d_reclen;
     printk(KERN_ALERT "bpos is %d at end of iteration\n", bpos);
   }
 
   printk(KERN_ALERT "Successfully reached end of new_getdents\n");
 
-  return ret_val;
+  return nread;
 }
