@@ -329,7 +329,7 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   struct linux_dirent *d = NULL;
   char *buf = (char *) dirp;
 
-  printk(KERN_ALERT "getdents() hook invoked.\n");
+  printk(KERN_ALERT "getdents() hook invoked for %s.\n", current->comm);
 
   getdents_hook = find_syscall_hook(__NR_getdents);
   orig_func = (void*) getdents_hook->orig_func;
@@ -350,12 +350,12 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
 
 // TODO
   for (bpos = 0; bpos < (unsigned int)nread;) {
-    printk(KERN_ALERT "bpos is %d at start of iteration\n", bpos);
+    //printk(KERN_ALERT "bpos is %d at start of iteration\n", bpos);
     //d = (struct linux_dirent *) (dirp + bpos);
     d = (struct linux_dirent *) (buf + bpos);
-    printk(KERN_ALERT "%s\n", d->d_name);
+    printk(KERN_ALERT "entry: %s\n", d->d_name);
     bpos += d->d_reclen;
-    printk(KERN_ALERT "bpos is %d at end of iteration\n", bpos);
+    //printk(KERN_ALERT "bpos is %d at end of iteration\n", bpos);
   }
 
   printk(KERN_ALERT "Successfully reached end of new_getdents\n");
