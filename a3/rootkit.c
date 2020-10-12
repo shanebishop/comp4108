@@ -336,29 +336,15 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
 
   nread = orig_func(fd, dirp, count);
 
-  printk(KERN_ALERT "ret_val is %d.\n", nread);
-
   if (dirp == NULL || nread < 1) {
     return nread;
   }
 
-  // TODO Need to be sure to add a print statement between every line
-
-  // TODO For now only print the first one
-//  curr = (struct linux_dirent*) dirp;
-//  printk(KERN_INFO "entry: %s\n", curr->d_name);
-
-// TODO
   for (bpos = 0; bpos < (unsigned int)nread;) {
-    //printk(KERN_ALERT "bpos is %d at start of iteration\n", bpos);
-    //d = (struct linux_dirent *) (dirp + bpos);
     d = (struct linux_dirent *) (buf + bpos);
     printk(KERN_ALERT "entry: %s\n", d->d_name);
     bpos += d->d_reclen;
-    //printk(KERN_ALERT "bpos is %d at end of iteration\n", bpos);
   }
-
-  printk(KERN_ALERT "Successfully reached end of new_getdents\n");
 
   return nread;
 }
