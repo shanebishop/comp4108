@@ -10,4 +10,4 @@ USERNAME=student
 sync
 
 #Insert the rootkit module, providing some parameters
-insmod rootkit.ko table_addr=0x$TABLE_ADDR root_uid="$(id --user "$USERNAME")" magic_prefix="foo"
+insmod rootkit.ko table_addr=0x$TABLE_ADDR root_uid="$(id --user "$USERNAME")"
