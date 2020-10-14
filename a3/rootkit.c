@@ -279,9 +279,12 @@ asmlinkage int new_execve(const char *filename, char *const argv[],
   int (*orig_func)(const char *filename, char *const argv[], char *const envp[]);
   t_syscall_hook *execve_hook;
 
+  //Retrieve the regular execve() function pointer
   execve_hook = find_syscall_hook(__NR_execve);
   orig_func = (void*) execve_hook->orig_func;
 
+  //Log the binary we are about to execute, and the eUID before
+  //we modify the eUID
   printk(KERN_INFO "Executing %s\n", filename);
   printk(KERN_INFO "Effective UID before switch %d\n", current_euid());
 
@@ -301,6 +304,7 @@ asmlinkage int new_execve(const char *filename, char *const argv[],
     }
   }
 
+  //Execute the regular execve() function, returning its return value
   return orig_func(filename, argv, envp);
 }
 
